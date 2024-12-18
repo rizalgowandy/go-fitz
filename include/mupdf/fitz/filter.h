@@ -1,3 +1,25 @@
+// Copyright (C) 2004-2023 Artifex Software, Inc.
+//
+// This file is part of MuPDF.
+//
+// MuPDF is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// MuPDF is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+// details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with MuPDF. If not, see <https://www.gnu.org/licenses/agpl-3.0.en.html>
+//
+// Alternative licensing terms are available from the licensor.
+// For commercial licensing, see <https://www.artifex.com/> or contact
+// Artifex Software, Inc., 39 Mesa Street, Suite 108A, San Francisco,
+// CA 94129, USA, for further information.
+
 #ifndef MUPDF_FITZ_FILTER_H
 #define MUPDF_FITZ_FILTER_H
 
@@ -12,14 +34,14 @@ typedef struct fz_jbig2_globals fz_jbig2_globals;
 typedef struct
 {
 	int64_t offset;
-	size_t length;
+	uint64_t length;
 } fz_range;
 
 /**
 	The null filter reads a specified amount of data from the
 	substream.
 */
-fz_stream *fz_open_null_filter(fz_context *ctx, fz_stream *chain, int len, int64_t offset);
+fz_stream *fz_open_null_filter(fz_context *ctx, fz_stream *chain, uint64_t len, int64_t offset);
 
 /**
 	The range filter copies data from specified ranges of the
@@ -31,7 +53,7 @@ fz_stream *fz_open_range_filter(fz_context *ctx, fz_stream *chain, fz_range *ran
 	The endstream filter reads a PDF substream, and starts to look
 	for an 'endstream' token after the specified length.
 */
-fz_stream *fz_open_endstream_filter(fz_context *ctx, fz_stream *chain, int len, int64_t offset);
+fz_stream *fz_open_endstream_filter(fz_context *ctx, fz_stream *chain, uint64_t len, int64_t offset);
 
 /**
 	Concat filter concatenates several streams into one.
@@ -79,8 +101,14 @@ fz_stream *fz_open_rld(fz_context *ctx, fz_stream *chain);
 	dctd filter performs DCT (JPEG) decoding of data read
 	from the chained filter.
 
-	color_transform implements the PDF color_transform option;
-	use -1 (unset) as a default.
+	color_transform implements the PDF color_transform option
+		use -1 for default behavior
+		use 0 to disable YUV-RGB / YCCK-CMYK transforms
+		use 1 to enable YUV-RGB / YCCK-CMYK transforms
+
+	invert_cmyk implements the necessary inversion for Photoshop CMYK images
+		use 0 if embedded in PDF
+		use 1 if not embedded in PDF
 
 	For subsampling on decode, set l2factor to the log2 of the
 	reduction required (therefore 0 = full size decode).
@@ -88,7 +116,7 @@ fz_stream *fz_open_rld(fz_context *ctx, fz_stream *chain);
 	jpegtables is an optional stream from which the JPEG tables
 	can be read. Use NULL if not required.
 */
-fz_stream *fz_open_dctd(fz_context *ctx, fz_stream *chain, int color_transform, int l2factor, fz_stream *jpegtables);
+fz_stream *fz_open_dctd(fz_context *ctx, fz_stream *chain, int color_transform, int invert_cmyk, int l2factor, fz_stream *jpegtables);
 
 /**
 	faxd filter performs FAX decoding of data read from
@@ -127,6 +155,15 @@ fz_stream *fz_open_faxd(fz_context *ctx, fz_stream *chain,
 fz_stream *fz_open_flated(fz_context *ctx, fz_stream *chain, int window_bits);
 
 /**
+	libarchived filter performs generic compressed decoding of data
+	in any format understood by libarchive from the chained filter.
+
+	This will throw an exception if libarchive is not built in, or
+	if the compression format is not recognised.
+*/
+fz_stream *fz_open_libarchived(fz_context *ctx, fz_stream *chain);
+
+/**
 	lzwd filter performs LZW decoding of data read from the chained
 	filter.
 
@@ -162,7 +199,7 @@ fz_stream *fz_open_predict(fz_context *ctx, fz_stream *chain, int predictor, int
 	Open a filter that performs jbig2 decompression on the chained
 	stream, using the optional globals record.
 */
-fz_stream *fz_open_jbig2d(fz_context *ctx, fz_stream *chain, fz_jbig2_globals *globals);
+fz_stream *fz_open_jbig2d(fz_context *ctx, fz_stream *chain, fz_jbig2_globals *globals, int embedded);
 
 /**
 	Create a jbig2 globals record from a buffer.
@@ -191,6 +228,11 @@ void fz_drop_jbig2_globals(fz_context *ctx, fz_jbig2_globals *globals);
 	store support.
 */
 void fz_drop_jbig2_globals_imp(fz_context *ctx, fz_storable *globals);
+
+/**
+	Return buffer containing jbig2 globals data stream.
+*/
+fz_buffer * fz_jbig2_globals_data(fz_context *ctx, fz_jbig2_globals *globals);
 
 /* Extra filters for tiff */
 
